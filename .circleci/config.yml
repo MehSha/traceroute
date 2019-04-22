@@ -1,0 +1,41 @@
+version: 2
+jobs:
+  build:
+    working_directory: /tmp/workspace
+    docker:
+     - image: circleci/golang
+    steps:
+      - checkout
+      - run: mkdir -p ~/gopath
+      - run: GOPATH=~/gopath go build
+      - setup_remote_docker
+      - run: docker build -t mehryaar/goroute /tmp/workspace/
+      - run: docker login -u $DOCKER_USER -p $DOCKER_PASS
+      - run: docker push mehryaar/goroute
+  
+ 
+  analyze:
+    docker:
+     - image: mehryaar/go-analyze
+    steps:
+      - checkout
+      - run: go-analyze.sh .
+
+workflows:
+  version: 2
+  all:
+    jobs:
+      - analyze:
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              only:
+                - master
+      - build:
+          filters:
+            tags:
+              only: /.*/
+          context: tokens
+          requires:
+            - analyze
